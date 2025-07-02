@@ -1,0 +1,124 @@
+body {
+    cursor: default;
+    font-family: "Sarabun", sans-serif !important;
+    background-color: #f8f9fa !important;
+    /* Mild white background */
+}
+
+.header-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    margin-top: 20px;
+}
+
+.logo {
+    max-height: 55px;
+    position: absolute;
+    top: 30px;
+    right: 90px;
+}
+
+.main-heading {
+    text-align: center;
+    margin: 20px 0;
+}
+
+@media (max-width: 930px) {
+    .header-wrapper {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .logo {
+        position: static;
+        margin-bottom: 10px;
+        max-height: 70px;
+    }
+
+    .main-heading {
+        margin-top: 10px;
+    }
+}
+
+.view-btn {
+    background-color: #00569f !important;
+    color: white !important;
+}
+
+.submit-btn, .saveChanges-btn {
+    background-color: #ffd863 !important;
+    color: white !important;
+}
+
+.detail-box {
+    display: none;
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-top: 10px;
+    background-color: #f9f9f9;
+}
+
+.detail-box-img {
+    max-height:300px;
+    width:100%;
+    object-fit:cover;
+}
+
+@media (max-width: 767px) {
+    .detail-box-img {
+        width: auto !important;
+    }
+}
+
+.value-box {
+    background-color: #f8f9fa;
+    border: 1px solid #ced4da;
+    padding: 5px 10px;
+    font-weight: bold;
+    display: inline-block;
+    width: 100px; /* Adjust this width if needed */
+    text-align: right;
+}
+
+.dollar-sign {
+    margin-right: 5px;
+}
+
+.custom-excel-button {
+    background-color: #f8f9fa;
+    color: #000;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.custom-excel-button:hover {
+    background-color: #e2e6ea !important;
+    transform: scale(1.02);
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.custom-excel-button img {
+    vertical-align: middle;
+}
+
+.custom-tooltip {
+    position: absolute;
+    background-color: #333;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-size: 13px;
+    z-index: 1000;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
