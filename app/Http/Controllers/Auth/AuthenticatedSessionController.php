@@ -39,7 +39,8 @@ class AuthenticatedSessionController extends Controller
             // Redirect to your custom login page with query and errors
             return redirect()->to('/?login=1')
                  ->withErrors($e->errors())
-                 ->withInput();
+                 ->withInput()
+                 ->with('openLogin', true);
         }
     }
 

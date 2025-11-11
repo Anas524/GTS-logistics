@@ -17,6 +17,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slim-select@2.6.0/dist/slimselect.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/slim-select@2.6.0/dist/slimselect.min.js"></script>
+
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    @stack('styles')
 </head>
 
 <body class="{{ request()->is('amazon-services') ? 'amazon-only' : '' }}">
@@ -39,6 +44,13 @@
     @include('partials.topbar')
 
     @include('partials.header')
+
+    {{-- Auto-open login when errors exist OR when explicitly asked via ?login=1 --}}
+    @if ($errors->any() || session('openLogin') || request()->boolean('login'))
+    <script>
+        window.__OPEN_LOGIN__ = true;
+    </script>
+    @endif
 
     @yield('content')
 
@@ -608,7 +620,13 @@
         </div>
     </section>
 
+    @include('partials.contact')
+
     @include('partials.footer')
+
+    <div id="back-to-top" aria-label="Back to top">
+        <i class="fa-solid fa-arrow-up"></i>
+    </div>
 
     <div id="whatsapp-chat">
         <a onclick="toggleChatPopup()">
@@ -621,28 +639,13 @@
         </div>
     </div>
 
-    @if(auth()->check() && auth()->user()->is_admin)
-    <script>
-        $('#slider-section, #about-section, #services, #contact-section, #int-shipping, #dom-shipping, #amazon-services').hide();
-        $('#admin-dashboard').fadeIn(300);
-    </script>
-    @endif
-
-    @if(request()->has('login'))
-    <script>
-        $('#loginTab').fadeIn(500);
-        $('html, body').animate({
-            scrollTop: $('#loginTab').offset().top
-        }, 500);
-    </script>
-    @endif
-
     <script>
         lucide.createIcons();
     </script>
 
     <script src="{{ asset('js/script.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    @stack('scripts')
 </body>
 
 </html>

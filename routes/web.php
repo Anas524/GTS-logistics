@@ -1,7 +1,11 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ARCalc\ProductEntryController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\LeadsController;
+use App\Http\Controllers\NewsletterController;
 use Illuminate\Support\Facades\Auth;
 
 // Public view
@@ -9,10 +13,12 @@ Route::get('/', function () {
     return view('gts');
 })->name('home');
 
-// Admin Dashboard Route (protected)
-Route::get('/admin-dashboard', function () {
-    return view('gts');
-})->middleware(['auth'])->name('admin.dashboard');
+Route::get('/login', function () {
+    return redirect('/?login=1');
+})->middleware('guest'); // no route name here so we don't collide with auth.php's named 'login'
+
+Route::middleware(['auth'])->get('/admin-dashboard', fn() => view('admin.dashboard'))
+    ->name('admin.dashboard');
 
 // Protected ARCalc routes
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -37,3 +43,18 @@ Route::get('/amazon-services', function () {
 Route::get('/modern-admin-login', function () {
     return view('auth.modern-admin-login');
 })->name('modern.login');
+
+Route::post('/contact', [ContactController::class, 'store'])
+    ->name('contact.submit')
+    ->middleware('throttle:3,1'); // at most 3 per minute
+
+Route::post('/account/password', [AccountController::class, 'updatePassword'])
+    ->middleware('auth')
+    ->name('account.password');
+
+Route::post('/newsletter/subscribe', [NewsletterController::class, 'store'])
+    ->name('newsletter.subscribe');
+
+Route::middleware(['auth', 'admin'])
+    ->get('/admin/leads', [LeadsController::class, 'index'])
+    ->name('leads.index');
