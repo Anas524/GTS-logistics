@@ -6,6 +6,9 @@ use App\Http\Controllers\ARCalc\ProductEntryController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\LeadsController;
 use App\Http\Controllers\NewsletterController;
+use App\Http\Controllers\FedexTrackingController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\DocumentHubController;
 use Illuminate\Support\Facades\Auth;
 
 // Public view
@@ -17,7 +20,11 @@ Route::get('/login', function () {
     return redirect('/?login=1');
 })->middleware('guest'); // no route name here so we don't collide with auth.php's named 'login'
 
-Route::middleware(['auth'])->get('/admin-dashboard', fn() => view('admin.dashboard'))
+// Route::middleware(['auth'])->get('/admin-dashboard', fn() => view('admin.dashboard'))
+//     ->name('admin.dashboard');
+
+Route::middleware(['auth', 'admin'])
+    ->get('/admin-dashboard', DashboardController::class)
     ->name('admin.dashboard');
 
 // Protected ARCalc routes
@@ -38,7 +45,7 @@ require __DIR__ . '/auth.php';
 
 Route::get('/amazon-services', function () {
     return view('amazon-services');
-});
+})->name('amazon.services');
 
 Route::get('/modern-admin-login', function () {
     return view('auth.modern-admin-login');
@@ -58,3 +65,43 @@ Route::post('/newsletter/subscribe', [NewsletterController::class, 'store'])
 Route::middleware(['auth', 'admin'])
     ->get('/admin/leads', [LeadsController::class, 'index'])
     ->name('leads.index');
+
+
+Route::get('/fedex/track', [FedexTrackingController::class, 'showForm'])
+    ->name('fedex.track.form');
+
+Route::post('/fedex/track', [FedexTrackingController::class, 'track'])
+    ->name('fedex.track.submit');
+
+Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
+
+    Route::get('/document-hub', [DocumentHubController::class, 'index'])
+        ->name('dh.index');
+
+    Route::post('/document-hub/folders', [DocumentHubController::class, 'storeFolder'])
+        ->name('dh.folders.store');
+
+    Route::delete('/document-hub/folders/{folder}', [DocumentHubController::class, 'destroy'])
+        ->name('dh.folders.destroy');
+
+    Route::get('/document-hub/{folder}/subfolders', [DocumentHubController::class, 'subfolderIndex'])
+        ->name('dh.subfolders.index');
+
+    Route::get('/document-hub/{folder}', [DocumentHubController::class, 'show'])
+        ->name('dh.show');
+
+    Route::post('/document-hub/{folder}/records', [DocumentHubController::class, 'storeRecord'])
+        ->name('dh.records.store');
+
+    Route::post('/document-hub/records/{record}/upload', [DocumentHubController::class, 'uploadFile'])
+        ->name('dh.records.upload');
+
+    Route::get('/document-hub/records/{record}/download', [DocumentHubController::class, 'download'])
+        ->name('dh.records.download');
+
+    Route::delete('/document-hub/records/{record}', [DocumentHubController::class, 'destroyRecord'])
+        ->name('dh.records.destroy');
+
+    Route::get('/document-hub/{folder}/download-all', [DocumentHubController::class, 'downloadAll'])
+        ->name('dh.folder.downloadAll');
+});

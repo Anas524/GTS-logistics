@@ -550,3 +550,36 @@ function closeResetModal() {
     $modal.removeClass('show').attr('aria-hidden', 'true');
     $('body').removeClass('modal-open');
 }
+
+// --- Special offer scroll bar ---
+(function () {
+    const bar = document.getElementById('scrollOfferBar');
+    if (!bar) return; // home only
+
+    // If this is the Amazon page bar, do nothing (always visible)
+    if (bar.classList.contains('amazon-offer-bar')) {
+        return;
+    }
+
+    let lastScrollY = window.scrollY;
+    const showAt = 700;   // px from top to start showing
+
+    window.addEventListener('scroll', function () {
+        const y = window.scrollY;
+
+        const scrollingDown = y > lastScrollY;
+        const scrollingUp   = y < lastScrollY;
+
+        // Show when user scrolls down past threshold
+        if (scrollingDown && y > showAt) {
+            bar.classList.add('visible');
+        }
+
+        // Hide when user scrolls UP, or goes back above threshold
+        if (scrollingUp || y <= showAt) {
+            bar.classList.remove('visible');
+        }
+
+        lastScrollY = y;
+    });
+})();

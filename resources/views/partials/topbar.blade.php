@@ -19,7 +19,7 @@
         <li><a href="#sea-freight" data-tab="tab-service3"><i class="fas fa-ship"></i> Sea Freight</a></li>
         <li><a href="#last-mile" data-tab="tab-service4"><i class="fas fa-truck"></i> Last-Mile Delivery</a></li>
         <li><a href="#warehousing" data-tab="tab-service5"><i class="fas fa-warehouse"></i> Warehousing & Storage</a></li>
-        <li><a href="{{ url('/amazon-services') }}"><i class="fas fa-barcode"></i> Amazon FBA Prep & Labeling</a></li>
+        <li><a href="{{ route('amazon.services') }}"><i class="fas fa-barcode"></i> Amazon FBA Prep & Labeling</a></li>
         <li><a href="#cod" data-tab="tab-service7"><i class="fas fa-money-bill-wave"></i> Cash on Delivery (COD)</a></li>
         <li><a href="#customs" data-tab="tab-service8"><i class="fas fa-file-invoice"></i> Customs Clearance</a></li>
         <li><a href="#e-commerce" data-tab="tab-service9"><i class="fas fa-box-open"></i> E-commerce Fulfillment</a></li>
@@ -56,7 +56,7 @@
   </div>
 @endguest
 
-{{-- Show Login Tab if `?login=1` --}}
+<!-- Show Login Tab if `?login=1` -->
 @if(request()->has('login'))
 <script>
   document.addEventListener("DOMContentLoaded", function () {

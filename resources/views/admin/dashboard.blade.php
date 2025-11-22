@@ -1,4 +1,4 @@
-@extends('layouts.gts_app')
+@extends('gts')
 
 @section('content')
 
@@ -233,6 +233,36 @@ $latestLeads = collect([$leadsLast, $newsLast])
 
         <div class="tool-actions">
           <a href="{{ route('leads.index', ['tab' => 'contacts']) }}" class="btn-primary-dark">Open</a>
+        </div>
+      </article>
+
+      {{-- Card: Document Hub --}}
+      <article class="tool-card"
+        data-tool-id="docs"
+        data-tool-name="Document Hub"
+        data-tool-desc="Store internal documents and attachments."
+        data-last-updated="{{ now()->toIso8601String() }}"
+        data-open-href="{{ route('dh.index') }}">
+        <div class="tool-card-left">
+          <div class="tool-icon">
+            <i class="fa-regular fa-folder-open" aria-hidden="true"></i>
+          </div>
+          <div class="tool-meta">
+            <div class="tool-title">
+              Document Hub
+            </div>
+            <div class="tool-updated">
+              <i class="fa-regular fa-clock" aria-hidden="true"></i>
+              <span>Central place for admin files</span>
+            </div>
+            <p class="tool-desc">
+              Organise folders, add dated records, and upload/view attachments.
+            </p>
+          </div>
+        </div>
+
+        <div class="tool-actions">
+          <a href="{{ route('dh.index') }}" class="btn-primary-dark">Open</a>
         </div>
       </article>
 

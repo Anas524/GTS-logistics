@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'fedex' => [
+        'env'            => env('FEDEX_ENV', 'sandbox'),
+        'client_id'      => env('FEDEX_CLIENT_ID'),
+        'client_secret'  => env('FEDEX_CLIENT_SECRET'),
+        'account_number' => env('FEDEX_ACCOUNT_NUMBER'),
+        'oauth_url'      => env('FEDEX_OAUTH_URL'),
+        'track_url'      => env('FEDEX_TRACK_URL'),
+    ],
+
 ];

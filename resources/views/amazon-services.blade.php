@@ -1,7 +1,21 @@
 @extends('gts') {{-- Assuming your main layout is named gts.blade.php --}}
 
 @section('content')
+
 <section class="gts-section" id="amazon-services">
+    {{-- Top Special Offer Bar (always visible on Amazon page) --}}
+    <div class="scroll-offer-bar amazon-offer-bar" id="scrollOfferBar">
+        <div class="scroll-offer-inner">
+            <span class="scroll-offer-pill">Special Offer</span>
+    
+            <div class="scroll-offer-text">
+                <strong>Up to 50% OFF</strong> on Amazon FBA prep services and
+                save up to 50% on shipping from UAE to USA door-to-door.
+                <span class="scroll-offer-terms">*T&Cs apply</span>
+            </div>
+        </div>
+    </div>
+    
     <div class="container modern-int-shipping">
         <div class="intro-header">
             <h2><span class="emoji"><i data-lucide="box" class="icon"></i></span> Amazon FBA Prep & Labeling</h2>

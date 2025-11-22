@@ -19,12 +19,9 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slim-select@2.6.0/dist/slimselect.min.css">
     <script src="https://cdn.jsdelivr.net/npm/slim-select@2.6.0/dist/slimselect.min.js"></script>
-
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    @stack('styles')
 </head>
 
-<body class="{{ request()->is('amazon-services') ? 'amazon-only' : '' }}">
+<body class="{{ request()->routeIs('amazon.services') ? 'amazon-only' : '' }}">
     {{-- DEBUG AUTH --}}
     @if(auth()->check())
     <script>
@@ -45,15 +42,34 @@
 
     @include('partials.header')
 
-    {{-- Auto-open login when errors exist OR when explicitly asked via ?login=1 --}}
-    @if ($errors->any() || session('openLogin') || request()->boolean('login'))
-    <script>
-        window.__OPEN_LOGIN__ = true;
-    </script>
+    @if (request()->routeIs('home'))
+    <div class="scroll-offer-bar" id="scrollOfferBar">
+        <div class="scroll-offer-inner">
+            <span class="scroll-offer-pill">Special Offer</span>
+
+            <div class="scroll-offer-text">
+                <strong>Up to 50% OFF</strong> on Amazon FBA prep services and
+                save up to 50% on shipping from UAE to USA door-to-door.
+                <span class="scroll-offer-terms">*T&Cs apply</span>
+            </div>
+
+            <a href="{{ route('amazon.services') }}" class="scroll-offer-link">
+                View Details <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </div>
     @endif
 
+    @if (request()->routeIs('admin.*'))
+    {{-- DASHBOARD PAGE ONLY --}}
     @yield('content')
+    @else
 
+    @hasSection('content')
+    {{-- Any child view (like amazon-services.blade.php) that defines @section("content") --}}
+    @yield('content')
+    @else
+    {{-- HOMEPAGE ONLY (everything below stays as-is) --}}
     <!-- Slider Section-1 -->
     <section class="hero-slider" id="slider-section">
         <div class="swiper mySwiper">
@@ -62,7 +78,7 @@
                 <!-- Slide 1 (Video) -->
                 <div class="swiper-slide">
                     <video autoplay muted loop playsinline>
-                        <source src="videos/slide1.mp4" type="video/mp4" />
+                        <source src="{{ asset('videos/slide1.mp4') }}" type="video/mp4">
                     </video>
                     <div class="slide-content">
                         <div class="text-overlay">
@@ -87,7 +103,7 @@
                 <!-- Slide 3 (Video) -->
                 <div class="swiper-slide">
                     <video autoplay muted loop playsinline>
-                        <source src="videos/slide3.mp4" type="video/mp4" />
+                        <source src="{{ asset('videos/slide3.mp4') }}" type="video/mp4">
                     </video>
                     <div class="slide-content">
                         <h1>Dangerous goods shipment</h1>
@@ -99,7 +115,7 @@
                 <!-- Slide 4 (Video) -->
                 <div class="swiper-slide">
                     <video autoplay muted loop playsinline>
-                        <source src="videos/slide4.mp4" type="video/mp4" />
+                        <source src="{{ asset('videos/slide4.mp4') }}" type="video/mp4">
                     </video>
                     <div class="slide-content">
                         <h1>Amazon prep & labeling services</h1>
@@ -111,6 +127,34 @@
             <div class="swiper-pagination"></div>
         </div>
 
+        {{-- SPECIAL OFFER – TICKET STYLE --}}
+        <div class="hero-offer-banner">
+            <div class="hero-offer-left">
+                <span class="hero-offer-percent">50%</span>
+                <span class="hero-offer-off">OFF</span>
+            </div>
+
+            <div class="hero-offer-main">
+                <p class="hero-offer-kicker">Amazon FBA Prep & Shipping</p>
+
+                <h3 class="hero-offer-heading">
+                    Save up to 50% on prep & UAE → USA shipping
+                </h3>
+
+                <p class="hero-offer-sub">
+                    Door-to-door delivery for Amazon sellers from UAE to USA.
+                </p>
+
+                <div class="hero-offer-bottom">
+                    <a href="{{ route('amazon.services') }}" class="hero-offer-cta">
+                        View Amazon FBA Offer
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                    <span class="hero-offer-terms">*T&Cs apply</span>
+                </div>
+            </div>
+        </div>
+        
     </section>
 
     <section class="services-section" id="services">
@@ -122,7 +166,7 @@
         <div class="services-grid">
 
             <!-- Card-1 -->
-            <div class="service-card" id="freight-forwarding" data-bg="images/freight.jpg">
+            <div class="service-card" id="freight-forwarding" data-bg="{{ asset('images/freight.jpg') }}">
                 <div class="service-top">
                     <i class="fas fa-shipping-fast service-icon"></i>
                     <div class="service-text">
@@ -161,7 +205,7 @@
             </div>
 
             <!-- Card-2 -->
-            <div class="service-card" id="air-cargo" data-bg="images/aircargo.jpeg">
+            <div class="service-card" id="air-cargo" data-bg="{{ asset('images/aircargo.jpeg') }}">
                 <div class="service-top">
                     <i class="fas fa-plane-departure service-icon"></i>
                     <div class="service-text">
@@ -193,7 +237,7 @@
             </div>
 
             <!-- Card-3 -->
-            <div class="service-card" id="sea-freight" data-bg="images/seafreight.jpg">
+            <div class="service-card" id="sea-freight" data-bg="{{ asset('images/seafreight.jpg') }}">
                 <div class="service-top">
                     <i class="fas fa-ship service-icon"></i>
                     <div class="service-text">
@@ -223,7 +267,7 @@
             </div>
 
             <!-- Card-4 -->
-            <div class="service-card" id="last-mile" data-bg="images/lastmile.jpeg">
+            <div class="service-card" id="last-mile" data-bg="{{ asset('images/lastmile.jpeg') }}">
                 <div class="service-top">
                     <i class="fas fa-truck service-icon"></i>
                     <div class="service-text">
@@ -256,7 +300,7 @@
             </div>
 
             <!-- Card-5 -->
-            <div class="service-card" id="warehousing" data-bg="images/Warehousing.jpg">
+            <div class="service-card" id="warehousing" data-bg="{{ asset('images/Warehousing.jpg') }}">
                 <div class="service-top">
                     <i class="fas fa-warehouse service-icon"></i>
                     <div class="service-text">
@@ -296,7 +340,7 @@
             </div>
 
             <!-- Card-6 -->
-            <div class="service-card" id="amazon-fba" data-bg="images/amazonfba.JPG">
+            <div class="service-card" id="amazon-fba" data-bg="{{ asset('images/amazonfba.jpg') }}">
                 <div class="service-top">
                     <i class="fas fa-barcode service-icon"></i>
                     <div class="service-text">
@@ -323,11 +367,18 @@
                         <li>To maintain smooth and compliant deliveries, Amazon enforces strict guidelines on box sizes,
                             pallet dimensions, and packaging</li>
                     </ul>
+
+                    <div class="service-detail-footer">
+                        <a href="{{ route('amazon.services') }}" class="service-more-link">
+                            Check full Amazon FBA details
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
 
             <!-- Card-7 -->
-            <div class="service-card" id="cod" data-bg="images/cod.jpeg">
+            <div class="service-card" id="cod" data-bg="{{ asset('images/cod.jpeg') }}">
                 <div class="service-top">
                     <i class="fas fa-money-bill-wave service-icon"></i>
                     <div class="service-text">
@@ -359,7 +410,7 @@
             </div>
 
             <!-- Card-8 -->
-            <div class="service-card" id="customs" data-bg="images/customs.jpg">
+            <div class="service-card" id="customs" data-bg="{{ asset('images/customs.jpg') }}">
                 <div class="service-top">
                     <i class="fas fa-file-invoice service-icon"></i>
                     <div class="service-text">
@@ -391,7 +442,7 @@
             </div>
 
             <!-- Card-9 -->
-            <div class="service-card" id="e-commerce" data-bg="images/e-commerce.jpg">
+            <div class="service-card" id="e-commerce" data-bg="{{ asset('images/e-commerce.jpg') }}">
                 <div class="service-top">
                     <i class="fas fa-box-open service-icon"></i>
                     <div class="service-text">
@@ -427,7 +478,7 @@
             </div>
 
             <!-- Card-10 -->
-            <div class="service-card" id="shipping" data-bg="images/shipping.jpeg">
+            <div class="service-card" id="shipping" data-bg="{{ asset('images/shipping.jpeg') }}">
                 <div class="service-top">
                     <i class="fas fa-globe service-icon"></i>
                     <div class="service-text">
@@ -620,7 +671,11 @@
         </div>
     </section>
 
+    {{-- Only show contact on public (non-admin) pages --}}
     @include('partials.contact')
+    @endif
+
+    @endif
 
     @include('partials.footer')
 
@@ -639,11 +694,20 @@
         </div>
     </div>
 
+    @if(request()->has('login'))
+    <script>
+        $('#loginTab').fadeIn(500);
+        $('html, body').animate({
+            scrollTop: $('#loginTab').offset().top
+        }, 500);
+    </script>
+    @endif
+
     <script>
         lucide.createIcons();
     </script>
 
-    <script src="{{ asset('js/script.js') }}"></script>
+    <script src="{{ asset('js/script.js?v=10') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     @stack('scripts')
 </body>
