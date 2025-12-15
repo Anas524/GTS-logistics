@@ -6,20 +6,20 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
-class AdminOnly
+class AdminOrConsultant
 {
-    public function handle(Request $request, Closure $next): Response
+     public function handle(Request $request, Closure $next): Response
     {
+        /** @var User|null $user */
         $user = Auth::user();
 
-        // not logged in -> go login
         if (!$user) {
             return redirect()->route('login');
         }
 
-        // only real admins allowed here
-        if ($user->is_admin) {
+        if ($user->isAdmin() || $user->isConsultant()) {
             return $next($request);
         }
 

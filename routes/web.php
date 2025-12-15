@@ -23,9 +23,9 @@ Route::get('/login', function () {
 // Route::middleware(['auth'])->get('/admin-dashboard', fn() => view('admin.dashboard'))
 //     ->name('admin.dashboard');
 
-Route::middleware(['auth', 'admin'])
-    ->get('/admin-dashboard', DashboardController::class)
-    ->name('admin.dashboard');
+// Route::middleware(['auth', 'admin'])
+//     ->get('/admin-dashboard', DashboardController::class)
+//     ->name('admin.dashboard');
 
 // Protected ARCalc routes
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -73,16 +73,15 @@ Route::get('/fedex/track', [FedexTrackingController::class, 'showForm'])
 Route::post('/fedex/track', [FedexTrackingController::class, 'track'])
     ->name('fedex.track.submit');
 
-Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'adminOrConsultant'])->prefix('admin')->group(function () {
 
+    // Dashboard (both admin + consultant)
+    Route::get('/dashboard', DashboardController::class)
+        ->name('admin.dashboard');
+
+    // Document Hub – shared read access (adminOrConsultant)
     Route::get('/document-hub', [DocumentHubController::class, 'index'])
         ->name('dh.index');
-
-    Route::post('/document-hub/folders', [DocumentHubController::class, 'storeFolder'])
-        ->name('dh.folders.store');
-
-    Route::delete('/document-hub/folders/{folder}', [DocumentHubController::class, 'destroy'])
-        ->name('dh.folders.destroy');
 
     Route::get('/document-hub/{folder}/subfolders', [DocumentHubController::class, 'subfolderIndex'])
         ->name('dh.subfolders.index');
@@ -90,18 +89,34 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('/document-hub/{folder}', [DocumentHubController::class, 'show'])
         ->name('dh.show');
 
-    Route::post('/document-hub/{folder}/records', [DocumentHubController::class, 'storeRecord'])
-        ->name('dh.records.store');
-
-    Route::post('/document-hub/records/{record}/upload', [DocumentHubController::class, 'uploadFile'])
-        ->name('dh.records.upload');
-
     Route::get('/document-hub/records/{record}/download', [DocumentHubController::class, 'download'])
         ->name('dh.records.download');
 
-    Route::delete('/document-hub/records/{record}', [DocumentHubController::class, 'destroyRecord'])
-        ->name('dh.records.destroy');
-
     Route::get('/document-hub/{folder}/download-all', [DocumentHubController::class, 'downloadAll'])
         ->name('dh.folder.downloadAll');
+
+    // Admin-only routes (create / upload / delete)
+    Route::post('/document-hub/folders', [DocumentHubController::class, 'storeFolder'])
+        ->name('dh.folders.store')
+        ->middleware('admin');
+
+    Route::delete('/document-hub/folders/{folder}', [DocumentHubController::class, 'destroy'])
+        ->name('dh.folders.destroy')
+        ->middleware('admin');
+
+    Route::post('/document-hub/{folder}/records', [DocumentHubController::class, 'storeRecord'])
+        ->name('dh.records.store')
+        ->middleware('admin');
+
+    Route::post('/document-hub/records/{record}/upload', [DocumentHubController::class, 'uploadFile'])
+        ->name('dh.records.upload')
+        ->middleware('admin');
+
+    Route::delete('/document-hub/records/{record}', [DocumentHubController::class, 'destroyRecord'])
+        ->name('dh.records.destroy')
+        ->middleware('admin');
 });
+
+Route::get('/careers', function () {
+    return view('careers');
+})->name('careers');

@@ -7,9 +7,13 @@
     $fileCount = $records->filter(function ($rec) {
     return !empty($rec->file_path);
     })->count();
+
+    $user = auth()->user();
+    $isAdmin = $user && method_exists($user, 'isAdmin') && $user->isAdmin();
+    $isConsultant = $user && method_exists($user, 'isConsultant') && $user->isConsultant();
     @endphp
 
-    <div class="max-w-6xl mx-auto font-plus">
+    <div class="max-w-6xl mx-auto font-plus" id="dh-show-root" data-is-admin="{{ $isAdmin ? 1 : 0 }}">
 
         {{-- Back buttons ------------------------------------------------------ --}}
         <div class="mb-4 flex items-center gap-2">
@@ -73,6 +77,7 @@
             </div>
 
             {{-- Add row form --}}
+            @if($isAdmin)
             <form method="POST"
                 action="{{ route('dh.records.store', $folder) }}"
                 class="flex flex-wrap gap-3 items-end">
@@ -92,6 +97,11 @@
                     + Add row
                 </button>
             </form>
+            @else
+            <p class="text-[11px] text-slate-500">
+                You have read-only access to this folder. Rows can only be added or removed by an admin.
+            </p>
+            @endif
 
             {{-- Table --}}
             <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/60">
@@ -133,6 +143,7 @@
 
                             {{-- Actions --}}
                             <td class="px-4 py-2 align-top text-right">
+                                @if($isAdmin)
                                 {{-- Upload --}}
                                 <button
                                     type="button"
@@ -170,12 +181,34 @@
                                     data-delete-url="{{ route('dh.records.destroy', $rec) }}">
                                     <i class="fa-regular fa-trash-can"></i>
                                 </button>
+                                @else
+                                {{-- Consultant: view only --}}
+                                @if($rec->file_path)
+                                <button
+                                    type="button"
+                                    class="dh-btn-icon dh-btn-view"
+                                    title="View attachment"
+                                    data-dh-view
+                                    data-filename="{{ $rec->original_name ?: 'Attachment' }}"
+                                    data-inline-url="{{ route('dh.records.download', [$rec, 'inline' => 1]) }}"
+                                    data-download-url="{{ route('dh.records.download', $rec) }}"
+                                    data-record-name="{{ $rec->original_name ?: 'Attachment' }}">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                                @endif
+                                @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
                             <td colspan="4" class="px-4 py-6 text-center text-slate-500">
-                                No records yet. Add one above.
+                                @if($isAdmin)
+                                    No records yet. Add one above.
+                                @elseif($isConsultant)
+                                    No records are available in this folder yet. Please contact an admin if you need a file added here.
+                                @else
+                                    No records yet.
+                                @endif
                             </td>
                         </tr>
                         @endforelse
@@ -187,6 +220,7 @@
 </section>
 
 {{-- Upload Attachments modal --}}
+@if($isAdmin)
 <div id="dh-upload-modal"
     class="text-dec-none fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/70 backdrop-blur-sm"
     aria-hidden="true">
@@ -248,6 +282,7 @@
         </form>
     </div>
 </div>
+@endif
 
 {{-- Attachments Viewer modal --}}
 <div id="dh-viewer-modal"
@@ -287,6 +322,7 @@
 </div>
 
 {{-- Replace confirmation modal --}}
+@if($isAdmin)
 <div id="dh-replace-modal"
     class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/70 backdrop-blur-sm"
     aria-hidden="true">
@@ -364,164 +400,17 @@
     @csrf
     @method('DELETE')
 </form>
+@endif
 
 @endsection
 
 @push('scripts')
 <script>
     $(function() {
-        // ---------- Upload modal ----------
-        var $uploadModal = $('#dh-upload-modal');
-        var $uploadForm = $('#dh-upload-form');
-        var $uploadFile = $('#dh-upload-file');
-        var $uploadTitle = $('#dh-upload-title');
-        var $existingWrap = $('#dh-existing-wrap'); // block showing existing file
-        var $existingName = $('#dh-existing-name'); // span with filename
-        var $selectedLabel = $('#dh-selected-file-name');
-        var $dropzone = $('#dh-dropzone');
-        var droppedFile = null; // stores file if user uses drag & drop
+        var rootEl = document.getElementById('dh-show-root');
+        var isAdmin = rootEl && rootEl.dataset.isAdmin === '1';
 
-        // ---------- Replace confirmation modal ----------
-        var $replaceModal = $('#dh-replace-modal');
-        var pendingUploadBtn = null; // store the clicked upload button
-
-        // ---------- Delete modal ----------
-        var $deleteModal = $('#dh-delete-modal');
-        var $deleteText = $('#dh-delete-text');
-        var $deleteForm = $('#dh-delete-form');
-        var pendingDeleteUrl = null;
-
-        // ---------- Upload helpers ----------
-        function openUploadModal(btn) {
-            var $btn = $(btn);
-            var $row = $btn.closest('tr');
-
-            // reset any previously dropped file
-            droppedFile = null;
-
-            // Take a nice label from the description cell (2nd td)
-            var recordName = $.trim($row.find('td').eq(1).text()) || 'Record';
-
-            var uploadUrl = $btn.data('upload-url');
-
-            // has file? -> from row data
-            var hasFile = String($row.data('has-file')) === '1';
-            var existing = $row.data('file-name') ||
-                $btn.data('existing-name') ||
-                '';
-
-            // Title + form action
-            $uploadTitle.text('Upload Attachments – ' + recordName);
-            $uploadForm.attr('action', uploadUrl);
-
-            // Reset file input
-            $uploadFile.val('');
-            $selectedLabel.text('No file selected yet.');
-
-            // Existing attachment block
-            if (hasFile && existing) {
-                $existingWrap.removeClass('hidden');
-                $existingName.text(existing);
-            } else {
-                $existingWrap.addClass('hidden');
-                $existingName.text('');
-            }
-
-            // Show modal
-            $uploadModal.removeClass('hidden').addClass('flex');
-        }
-
-        function closeUploadModal() {
-            // also reset here, for safety
-            droppedFile = null;
-            $uploadModal.removeClass('flex').addClass('hidden');
-        }
-
-        function openReplaceModal(existingName) {
-            var msg = 'This record already has an attachment';
-            if (existingName) {
-                msg += ' (“' + existingName + '”).';
-            } else {
-                msg += '.';
-            }
-            msg += ' Uploading a new file will permanently replace it. Continue?';
-
-            $('#dh-replace-text').text(msg);
-
-            $replaceModal
-                .removeClass('hidden')
-                .addClass('flex')
-                .attr('aria-hidden', 'false');
-        }
-
-        function closeReplaceModal() {
-            $replaceModal
-                .addClass('hidden')
-                .removeClass('flex')
-                .attr('aria-hidden', 'true');
-        }
-
-        // --- Upload button click ---
-        $(document).on('click', '[data-dh-upload]', function(e) {
-            e.preventDefault();
-
-            var $btn = $(this);
-            var $row = $btn.closest('tr');
-
-            var hasFile = String($row.data('has-file')) === '1';
-            var existing = $row.data('file-name') ||
-                $btn.data('existing-name') ||
-                '';
-
-            if (hasFile && existing) {
-                // Ask before replacing
-                pendingUploadBtn = this;
-                openReplaceModal(existing);
-            } else {
-                // No existing file -> open upload directly
-                openUploadModal(this);
-            }
-        });
-
-        // Replace modal: cancel (both X and "Keep existing")
-        $(document).on('click', '[data-dh-replace-cancel]', function(e) {
-            e.preventDefault();
-            pendingUploadBtn = null;
-            closeReplaceModal();
-        });
-
-        // Replace modal: confirm
-        $('#dh-replace-confirm').on('click', function(e) {
-            e.preventDefault();
-            if (!pendingUploadBtn) return;
-            closeReplaceModal();
-            openUploadModal(pendingUploadBtn);
-            pendingUploadBtn = null;
-        });
-
-        // Upload modal close (X + footer cancel)
-        $(document).on('click', '[data-dh-upload-close]', function(e) {
-            e.preventDefault();
-            closeUploadModal();
-        });
-
-        // Click on backdrop to close upload modal
-        $uploadModal.on('click', function(e) {
-            if (e.target === this) {
-                closeUploadModal();
-            }
-        });
-
-        // Show selected file name
-        $uploadFile.on('change', function() {
-            // If user picked manually, ignore any previous dropped file
-            droppedFile = null;
-
-            var name = this.files && this.files[0] ? this.files[0].name : '';
-            $selectedLabel.text(name || 'No file selected yet.');
-        });
-
-        // ---------- Viewer modal ----------
+        // ---------- Viewer modal (everyone) ----------
         var $viewerModal = $('#dh-viewer-modal');
         var $viewerTitle = $('#dh-viewer-title');
         var $viewerFrame = $('#dh-viewer-frame');
@@ -569,158 +458,329 @@
             }
         });
 
-        function openDeleteModal(name, url) {
-            pendingDeleteUrl = url || null;
+        // ---------- Admin-only: upload / delete / drag & drop ----------
+        if (isAdmin) {
+            // ---------- Upload modal ----------
+            var $uploadModal = $('#dh-upload-modal');
+            var $uploadForm = $('#dh-upload-form');
+            var $uploadFile = $('#dh-upload-file');
+            var $uploadTitle = $('#dh-upload-title');
+            var $existingWrap = $('#dh-existing-wrap'); // block showing existing file
+            var $existingName = $('#dh-existing-name'); // span with filename
+            var $selectedLabel = $('#dh-selected-file-name');
+            var $dropzone = $('#dh-dropzone');
+            var droppedFile = null; // stores file if user uses drag & drop
 
-            $deleteText.text(
-                'Are you sure you want to delete "' + name +
-                '"? This will also delete any attached file.'
-            );
+            // ---------- Replace confirmation modal ----------
+            var $replaceModal = $('#dh-replace-modal');
+            var pendingUploadBtn = null; // store the clicked upload button
 
-            $deleteModal
-                .removeClass('hidden')
-                .addClass('flex')
-                .attr('aria-hidden', 'false');
-        }
+            // ---------- Delete modal ----------
+            var $deleteModal = $('#dh-delete-modal');
+            var $deleteText = $('#dh-delete-text');
+            var $deleteForm = $('#dh-delete-form');
+            var pendingDeleteUrl = null;
 
-        function closeDeleteModal() {
-            pendingDeleteUrl = null;
-            $deleteModal
-                .addClass('hidden')
-                .removeClass('flex')
-                .attr('aria-hidden', 'true');
-        }
 
-        // open delete modal from row button
-        $(document).on('click', '[data-dh-delete]', function(e) {
-            e.preventDefault();
+            // ---------- Upload helpers ----------
+            function openUploadModal(btn) {
+                var $btn = $(btn);
+                var $row = $btn.closest('tr');
 
-            var $btn = $(this);
-            var $row = $btn.closest('tr');
+                // reset any previously dropped file
+                droppedFile = null;
 
-            var hasFile = String($row.data('has-file')) === '1';
-            var name = $btn.data('record-name') || 'this record';
-            var url = $btn.data('delete-url') || '';
+                // Take a nice label from the description cell (2nd td)
+                var recordName = $.trim($row.find('td').eq(1).text()) || 'Record';
 
-            if (!url) {
-                return; // safety guard
+                var uploadUrl = $btn.data('upload-url');
+
+                // has file? -> from row data
+                var hasFile = String($row.data('has-file')) === '1';
+                var existing = $row.data('file-name') ||
+                    $btn.data('existing-name') ||
+                    '';
+
+                // Title + form action
+                $uploadTitle.text('Upload Attachments – ' + recordName);
+                $uploadForm.attr('action', uploadUrl);
+
+                // Reset file input
+                $uploadFile.val('');
+                $selectedLabel.text('No file selected yet.');
+
+                // Existing attachment block
+                if (hasFile && existing) {
+                    $existingWrap.removeClass('hidden');
+                    $existingName.text(existing);
+                } else {
+                    $existingWrap.addClass('hidden');
+                    $existingName.text('');
+                }
+
+                // Show modal
+                $uploadModal.removeClass('hidden').addClass('flex');
             }
 
-            if (!hasFile) {
-                // No attachment -> delete directly, no modal
-                $deleteForm.attr('action', url);
-                $deleteForm.trigger('submit');
-                return;
+            function closeUploadModal() {
+                // also reset here, for safety
+                droppedFile = null;
+                $uploadModal.removeClass('flex').addClass('hidden');
             }
 
-            // Has attachment -> show confirmation modal
-            openDeleteModal(name, url);
-        });
+            function openReplaceModal(existingName) {
+                var msg = 'This record already has an attachment';
+                if (existingName) {
+                    msg += ' (“' + existingName + '”).';
+                } else {
+                    msg += '.';
+                }
+                msg += ' Uploading a new file will permanently replace it. Continue?';
 
-        // delete modal: cancel
-        $(document).on('click', '[data-dh-delete-cancel]', function(e) {
-            e.preventDefault();
-            closeDeleteModal();
-        });
+                $('#dh-replace-text').text(msg);
 
-        // delete modal: confirm
-        $('#dh-delete-confirm').on('click', function(e) {
-            e.preventDefault();
-            if (!pendingDeleteUrl) {
-                closeDeleteModal();
-                return;
+                $replaceModal
+                    .removeClass('hidden')
+                    .addClass('flex')
+                    .attr('aria-hidden', 'false');
             }
 
-            $deleteForm.attr('action', pendingDeleteUrl);
-            $deleteForm.trigger('submit');
-        });
-
-        // backdrop click for delete modal
-        $deleteModal.on('click', function(e) {
-            if (e.target === this) {
-                closeDeleteModal();
+            function closeReplaceModal() {
+                $replaceModal
+                    .addClass('hidden')
+                    .removeClass('flex')
+                    .attr('aria-hidden', 'true');
             }
-        });
 
-        // Prevent browser default (opening file in tab) for drag/drop anywhere
-        $(document).on('dragover drop', function(e) {
-            e.preventDefault();
-        });
-
-        // --- Drag & drop on the dropzone ---
-        if ($dropzone.length) {
-            $dropzone.on('dragenter dragover', function(e) {
+            // --- Upload button click ---
+            $(document).on('click', '[data-dh-upload]', function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                $dropzone.addClass('ring-1 ring-sky-500 bg-slate-900/80');
+
+                var $btn = $(this);
+                var $row = $btn.closest('tr');
+
+                var hasFile = String($row.data('has-file')) === '1';
+                var existing = $row.data('file-name') ||
+                    $btn.data('existing-name') ||
+                    '';
+
+                if (hasFile && existing) {
+                    // Ask before replacing
+                    pendingUploadBtn = this;
+                    openReplaceModal(existing);
+                } else {
+                    // No existing file -> open upload directly
+                    openUploadModal(this);
+                }
             });
 
-            $dropzone.on('dragleave dragend', function(e) {
+            // Replace modal: cancel (both X and "Keep existing")
+            $(document).on('click', '[data-dh-replace-cancel]', function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                $dropzone.removeClass('ring-1 ring-sky-500 bg-slate-900/80');
+                pendingUploadBtn = null;
+                closeReplaceModal();
             });
 
-            $dropzone.on('drop', function(e) {
+            // Replace modal: confirm
+            $('#dh-replace-confirm').on('click', function(e) {
                 e.preventDefault();
-                e.stopPropagation();
-                $dropzone.removeClass('ring-1 ring-sky-500 bg-slate-900/80');
+                if (!pendingUploadBtn) return;
+                closeReplaceModal();
+                openUploadModal(pendingUploadBtn);
+                pendingUploadBtn = null;
+            });
 
-                var dt = e.originalEvent.dataTransfer;
-                if (!dt || !dt.files || !dt.files.length) {
+            // Upload modal close (X + footer cancel)
+            $(document).on('click', '[data-dh-upload-close]', function(e) {
+                e.preventDefault();
+                closeUploadModal();
+            });
+
+            // Click on backdrop to close upload modal
+            $uploadModal.on('click', function(e) {
+                if (e.target === this) {
+                    closeUploadModal();
+                }
+            });
+
+            // Show selected file name
+            $uploadFile.on('change', function() {
+                // If user picked manually, ignore any previous dropped file
+                droppedFile = null;
+
+                var name = this.files && this.files[0] ? this.files[0].name : '';
+                $selectedLabel.text(name || 'No file selected yet.');
+            });
+
+            // ----- Delete helpers -----
+            function openDeleteModal(name, url) {
+                pendingDeleteUrl = url || null;
+
+                $deleteText.text(
+                    'Are you sure you want to delete "' + name +
+                    '"? This will also delete any attached file.'
+                );
+
+                $deleteModal
+                    .removeClass('hidden')
+                    .addClass('flex')
+                    .attr('aria-hidden', 'false');
+            }
+
+            function closeDeleteModal() {
+                pendingDeleteUrl = null;
+                $deleteModal
+                    .addClass('hidden')
+                    .removeClass('flex')
+                    .attr('aria-hidden', 'true');
+            }
+
+            // open delete modal from row button
+            $(document).on('click', '[data-dh-delete]', function(e) {
+                e.preventDefault();
+
+                var $btn = $(this);
+                var $row = $btn.closest('tr');
+
+                var hasFile = String($row.data('has-file')) === '1';
+                var name = $btn.data('record-name') || 'this record';
+                var url = $btn.data('delete-url') || '';
+
+                if (!url) {
+                    return; // safety guard
+                }
+
+                if (!hasFile) {
+                    // No attachment -> delete directly, no modal
+                    $deleteForm.attr('action', url);
+                    $deleteForm.trigger('submit');
                     return;
                 }
 
-                // We only support a single file (same as <input>)
-                droppedFile = dt.files[0];
+                // Has attachment -> show confirmation modal
+                openDeleteModal(name, url);
+            });
 
-                // Show file name in label
-                $selectedLabel.text(droppedFile.name || 'File selected');
+            // delete modal: cancel
+            $(document).on('click', '[data-dh-delete-cancel]', function(e) {
+                e.preventDefault();
+                closeDeleteModal();
+            });
+
+            // delete modal: confirm
+            $('#dh-delete-confirm').on('click', function(e) {
+                e.preventDefault();
+                if (!pendingDeleteUrl) {
+                    closeDeleteModal();
+                    return;
+                }
+
+                $deleteForm.attr('action', pendingDeleteUrl);
+                $deleteForm.trigger('submit');
+            });
+
+            // backdrop click for delete modal
+            $deleteModal.on('click', function(e) {
+                if (e.target === this) {
+                    closeDeleteModal();
+                }
+            });
+
+            // Prevent browser default (opening file in tab) for drag/drop anywhere
+            $(document).on('dragover drop', function(e) {
+                e.preventDefault();
+            });
+
+            // --- Drag & drop on the dropzone ---
+            if ($dropzone.length) {
+                $dropzone.on('dragenter dragover', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $dropzone.addClass('ring-1 ring-sky-500 bg-slate-900/80');
+                });
+
+                $dropzone.on('dragleave dragend', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $dropzone.removeClass('ring-1 ring-sky-500 bg-slate-900/80');
+                });
+
+                $dropzone.on('drop', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $dropzone.removeClass('ring-1 ring-sky-500 bg-slate-900/80');
+
+                    var dt = e.originalEvent.dataTransfer;
+                    if (!dt || !dt.files || !dt.files.length) {
+                        return;
+                    }
+
+                    // We only support a single file (same as <input>)
+                    droppedFile = dt.files[0];
+
+                    // Show file name in label
+                    $selectedLabel.text(droppedFile.name || 'File selected');
+                });
+            }
+
+            // When submitting the upload form, if user used drag & drop, send via AJAX
+            $uploadForm.on('submit', function(e) {
+                if (!droppedFile) {
+                    // Normal file input submit – let browser handle it
+                    return true;
+                }
+
+                e.preventDefault();
+
+                var action = $uploadForm.attr('action');
+                var token = $uploadForm.find('input[name="_token"]').val();
+
+                var formData = new FormData();
+                formData.append('_token', token);
+                formData.append('file', droppedFile);
+
+                $.ajax({
+                    url: action,
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function() {
+                        // Close modal + reload page so the table updates
+                        closeUploadModal();
+                        window.location.reload();
+                    },
+                    error: function(xhr) {
+                        console.error(xhr);
+                        alert('Failed to upload file. Please try again.');
+                    }
+                });
+            });
+
+            // ESC closes all modals
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeUploadModal();
+                    closeViewerModal();
+                    closeReplaceModal();
+                    closeDeleteModal();
+                }
+            });
+
+        } else {
+            // ESC for consultants: only close viewer
+            $(document).on('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeViewerModal();
+                }
             });
         }
 
-        // When submitting the upload form, if user used drag & drop, send via AJAX
-        $uploadForm.on('submit', function(e) {
-            if (!droppedFile) {
-                // Normal file input submit – let browser handle it
-                return true;
-            }
-
+        $('#dh-download-current').on('click', function(e) {
             e.preventDefault();
-
-            var action = $uploadForm.attr('action');
-            var token = $uploadForm.find('input[name="_token"]').val();
-
-            var formData = new FormData();
-            formData.append('_token', token);
-            formData.append('file', droppedFile);
-
-            $.ajax({
-                url: action,
-                method: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function() {
-                    // Close modal + reload page so the table updates
-                    closeUploadModal();
-                    window.location.reload();
-                },
-                error: function(xhr) {
-                    console.error(xhr);
-                    alert('Failed to upload file. Please try again.');
-                }
-            });
-        });
-
-        // ESC closes all modals
-        $(document).on('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeUploadModal();
-                closeViewerModal();
-                closeReplaceModal();
-                closeDeleteModal();
-            }
+            var href = $(this).attr('href');
+            if (!href || href === '#') return;
+            window.open(href, '_blank');
         });
 
     });

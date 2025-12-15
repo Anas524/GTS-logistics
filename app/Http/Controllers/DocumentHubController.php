@@ -13,7 +13,8 @@ class DocumentHubController extends Controller
 {
     public function __construct()
     {
-        $this->middleware(['auth', 'admin']); // only admins
+        // both admin & consultant must be logged in
+        $this->middleware('auth');
     }
 
     // List folders (root only)

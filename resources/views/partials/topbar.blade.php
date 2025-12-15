@@ -30,7 +30,7 @@
 @guest
   {{-- Only show login tab when logged out --}}
   <div class="header-tab full-login-tab modern-admin-login" id="loginTab">
-      <h3 class="login-heading"><i class="fas fa-user-shield"></i> Admin Login</h3>
+      <h3 class="login-heading"><i class="fas fa-right-to-bracket"></i> GTS Portal Login</h3>
       <form method="POST" action="{{ url('/login') }}" id="adminLoginForm">
           @csrf
           <div class="modern-input-group">

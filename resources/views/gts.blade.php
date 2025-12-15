@@ -22,16 +22,6 @@
 </head>
 
 <body class="{{ request()->routeIs('amazon.services') ? 'amazon-only' : '' }}">
-    {{-- DEBUG AUTH --}}
-    @if(auth()->check())
-    <script>
-        console.log('✅ Logged in as: {{ auth()->user()->email }}');
-    </script>
-    @else
-    <script>
-        console.log('❌ Not Logged In');
-    </script>
-    @endif
 
     <!-- Entry Animation Overlay -->
     <div id="entryOverlay">
@@ -154,7 +144,61 @@
                 </div>
             </div>
         </div>
-        
+
+    </section>
+
+    <section id="careers-section" class="careers-teaser">
+        <div class="h-font p-font careers-inner">
+            <div class="careers-left">
+                <div class="careers-pill">
+                    <span>We’re hiring</span>
+                </div>
+                <h2 class="careers-title">
+                    Join <span>GTS Logistics Air Cargo Services</span>
+                </h2>
+                <p class="careers-sub">
+                    We’re looking for motivated warehouse talent with Dangerous Goods (ID 8000) and
+                    e-commerce experience to support our growing operations in Dubai.
+                </p>
+
+                <div class="careers-tags">
+                    <span class="careers-tag">Warehouse Labor / Supervisor</span>
+                    <span class="careers-tag">Warehouse Labor</span>
+                </div>
+
+                <div class="careers-cta-row">
+                    <a href="{{ route('careers') }}" class="careers-btn-primary">
+                        View open positions
+                    </a>
+                    <div class="careers-contact-hint">
+                        Or send your CV to:
+                        <span>ops@globaltradeservices.ae</span> /
+                        <span>hr@globaltradeservices.ae</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="careers-right">
+                <div class="careers-card">
+                    <div class="careers-logo-wrap">
+                        <img src="{{ asset('images/gts-logo.png') }}" alt="GTS Logistics" />
+                    </div>
+                    <p class="careers-highlight">
+                        Positions open in <strong>Dubai, UAE</strong> for
+                        <strong>Dangerous Goods &amp; e-commerce warehouse operations</strong>.
+                    </p>
+                    <ul class="careers-bullets">
+                        <li>Dangerous Goods (ID 8000 Consumer Commodity)</li>
+                        <li>Amazon FBA &amp; e-commerce packing</li>
+                        <li>FNSKU &amp; label printing</li>
+                        <li>Full-time roles with visa &amp; benefits</li>
+                    </ul>
+                    <a href="{{ route('careers') }}" class="careers-link-more">
+                        See full job descriptions →
+                    </a>
+                </div>
+            </div>
+        </div>
     </section>
 
     <section class="services-section" id="services">

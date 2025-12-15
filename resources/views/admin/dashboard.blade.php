@@ -14,6 +14,11 @@ $latestLeads = collect([$leadsLast, $newsLast])
 ->map(fn($t) => Carbon::parse($t))
 ->sortDesc()
 ->first();
+
+/** @var \App\Models\User|null $user */
+$user = auth()->user();
+$isAdmin = $user && method_exists($user, 'isAdmin') && $user->isAdmin();
+$isConsultant = $user && method_exists($user, 'isConsultant') && $user->isConsultant();
 @endphp
 
 <section id="admin-dashboard" data-user-id="{{ auth()->id() }}">
@@ -23,10 +28,18 @@ $latestLeads = collect([$leadsLast, $newsLast])
     <div class="dash-headbar">
       <div class="dash-head-left">
         <h1 class="dash-title">✨ Welcome back</h1>
+
+        @if($isConsultant)
+        <p class="dash-sub">
+          You’re signed in as a <strong>consultant</strong>. You can view items in the Document Hub.
+        </p>
+        @else
         <p class="dash-sub">Choose a tool to get started.</p>
+        @endif
       </div>
 
       <div class="dash-head-right">
+        @if($isAdmin)
         <label class="dash-searchbar" aria-label="Find a tool">
           <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
           <input type="search" placeholder="Find a tool…" />
@@ -130,6 +143,7 @@ $latestLeads = collect([$leadsLast, $newsLast])
             </form>
           </div>
         </div>
+        @endif
 
         <form method="POST" action="{{ route('logout') }}" class="dash-logout-inline">
           @csrf
@@ -139,15 +153,23 @@ $latestLeads = collect([$leadsLast, $newsLast])
     </div>
 
     {{-- Tip strip --}}
+    @if($isAdmin)
     <div class="dash-tiprow">
       <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
       <span>Tip: Use search to find tools fast. Your most recently used tools appear first.</span>
     </div>
+    @elseif($isConsultant)
+    <div class="dash-tiprow">
+      <i class="fa-regular fa-circle-question" aria-hidden="true"></i>
+      <span>Tip: Open the Document Hub card below to browse folders and view attachments. Uploads and deletions are done by admins.</span>
+    </div>
+    @endif
 
     {{-- Tools grid --}}
     <div class="dash-tools-grid">
 
       {{-- Card: Amazon Revenue Calculator --}}
+      @if($user && method_exists($user, 'isAdmin') && $user->isAdmin())
       <article class="tool-card"
         data-tool-id="calculator"
         data-tool-name="Amazon Revenue Calculator"
@@ -177,14 +199,16 @@ $latestLeads = collect([$leadsLast, $newsLast])
           <a href="{{ route('calculator.index') }}" class="btn-primary-dark">Open</a>
         </div>
       </article>
+      @endif
 
       {{-- Card: Investment Sheets --}}
+      @if($user && method_exists($user, 'isAdmin') && $user->isAdmin())
       <article class="tool-card"
         data-tool-id="invest"
         data-tool-name="Investment Sheets"
         data-tool-desc="Compare opportunities, track ROI, and export investor-ready PDFs."
         data-last-updated="{{ now()->subDays(2)->toIso8601String() }}"
-        data-open-href="{{ url('/investment-sheets') }}">
+        data-open-href="{{ route('investment.index') }}">
         <div class="tool-card-left">
           <div class="tool-icon">
             <i class="fa-regular fa-file-lines" aria-hidden="true"></i>
@@ -204,11 +228,13 @@ $latestLeads = collect([$leadsLast, $newsLast])
         </div>
 
         <div class="tool-actions">
-          <a href="{{ url('/investment-sheets') }}" class="btn-primary-dark">Open</a>
+          <a href="{{ route('investment.index') }}" class="btn-primary-dark">Open</a>
         </div>
       </article>
+      @endif
 
       {{-- Card: Leads (Contacts + Newsletter) --}}
+      @if($user && method_exists($user, 'isAdmin') && $user->isAdmin())
       <article class="tool-card"
         data-tool-id="leads"
         data-tool-name="Leads"
@@ -235,8 +261,10 @@ $latestLeads = collect([$leadsLast, $newsLast])
           <a href="{{ route('leads.index', ['tab' => 'contacts']) }}" class="btn-primary-dark">Open</a>
         </div>
       </article>
+      @endif
 
       {{-- Card: Document Hub --}}
+      @if($user && ( (method_exists($user, 'isAdmin') && $user->isAdmin()) || (method_exists($user, 'isConsultant') && $user->isConsultant()) ))
       <article class="tool-card"
         data-tool-id="docs"
         data-tool-name="Document Hub"
@@ -265,6 +293,7 @@ $latestLeads = collect([$leadsLast, $newsLast])
           <a href="{{ route('dh.index') }}" class="btn-primary-dark">Open</a>
         </div>
       </article>
+      @endif
 
     </div>
   </div>

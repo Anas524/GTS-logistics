@@ -2,6 +2,12 @@
 
 @section('content')
 <section class="text-dec-none p-font py-10 px-4">
+    @php
+        $user = auth()->user();
+        $isAdmin = $user && method_exists($user, 'isAdmin') && $user->isAdmin();
+        $isConsultant = $user && method_exists($user, 'isConsultant') && $user->isConsultant();
+    @endphp
+
     <div id="dh-root" data-existing-names='@json($existingNames)' class="max-w-6xl mx-auto font-plus space-y-6">
 
         {{-- Header / hero ---------------------------------------------------- --}}
@@ -17,15 +23,21 @@
                     Document Hub
                 </h1>
                 <p class="mt-1 text-xs text-slate-500 max-w-xl">
-                    Create folders and organise your admin documents and attachments so you can find them quickly.
+                    @if($isConsultant)
+                        You have read-only access to folders and attachments.
+                    @else
+                        Create folders and organise your admin documents and attachments so you can find them quickly.
+                    @endif
                 </p>
             </div>
 
+            @if($isAdmin)
             <button type="button"
                     id="dh-open-create"
                     class="inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:bg-sky-600 cursor-pointer">
                 + New Folder
             </button>
+            @endif
         </div>
 
         @php
@@ -46,13 +58,15 @@
                     </span>
                 </div>
 
-                <button
-                    type="button"
-                    id="dh-delete-folder-btn"
-                    class="inline-flex items-center gap-2 rounded-full bg-rose-500 px-4 py-2 text-[11px] font-semibold text-white shadow-md hover:bg-rose-600 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
-                    <i class="fa-regular fa-trash-can text-[11px]"></i>
-                    <span>Delete selected folder</span>
-                </button>
+                @if($isAdmin)
+                    <button
+                        type="button"
+                        id="dh-delete-folder-btn"
+                        class="inline-flex items-center gap-2 rounded-full bg-rose-500 px-4 py-2 text-[11px] font-semibold text-white shadow-md hover:bg-rose-600 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                        <i class="fa-regular fa-trash-can text-[11px]"></i>
+                        <span>Delete selected folder</span>
+                    </button>
+                @endif
             </div>
 
             {{-- Folder cards ------------------------------------------------- --}}
@@ -110,11 +124,13 @@
                         {{-- Actions row -------------------------------------- --}}
                         <div class="mt-4 flex items-center justify-between">
                             {{-- Subfolders button --}}
+                            @if($isAdmin || $subfolderCount > 0)
                             <a href="{{ route('dh.subfolders.index', $folder) }}"
                                class="inline-flex items-center gap-1 rounded-full border border-sky-500 bg-white px-3 py-1.5 text-[10px] font-semibold text-sky-600 shadow-sm hover:bg-sky-500 hover:text-white"
                                onclick="event.stopPropagation();">
                                 Subfolders
                             </a>
+                            @endif
 
                             {{-- Open button --}}
                             <a href="{{ route('dh.show', $folder) }}"
@@ -129,6 +145,7 @@
         @else
             {{-- Empty state --------------------------------------------------- --}}
             <div class="rounded-2xl border border-dashed border-slate-300 bg-white/80 px-6 py-10 text-center text-xs text-slate-500">
+                @if($isAdmin)
                 <p class="mb-1">No folders yet.</p>
                 <p>
                     Click
@@ -139,6 +156,10 @@
                     </button>
                     to create one.
                 </p>
+                @else
+                    <p class="mb-1">No folders are available yet.</p>
+                    <p>Please contact an admin if you need access.</p>
+                @endif
             </div>
         @endif
     </div>
