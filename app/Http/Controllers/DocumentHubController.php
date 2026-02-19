@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\DhFolder;
 use App\Models\DhRecord;
 use Illuminate\Http\Request;
+use App\Models\DhRecordAttachment;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -65,7 +66,10 @@ class DocumentHubController extends Controller
     {
         $folder->load(['records']);
 
-        $records = $folder->records()->latest('doc_date')->get();
+        $records = $folder->records()
+            ->with('attachments')
+            ->latest('doc_date')
+            ->get();
 
         return view('admin.dh.show', compact('folder', 'records'));
     }
@@ -73,6 +77,12 @@ class DocumentHubController extends Controller
     // Add a row (no file yet)
     public function storeRecord(DhFolder $folder, Request $request)
     {
+        /** @var \App\Models\User|null $user */
+        $user = $request->user();
+        if (!$user || (!$user->isAdmin() && !$user->isConsultant())) {
+            abort(403);
+        }
+
         $data = $request->validate([
             'doc_date'    => ['nullable', 'date'],
             'description' => ['nullable', 'string'],
@@ -88,24 +98,29 @@ class DocumentHubController extends Controller
     // Upload / replace file for a record
     public function uploadFile(DhRecord $record, Request $request)
     {
-        $data = $request->validate([
-            'file' => ['required', 'file', 'max:10240'], // 10 MB
-        ]);
-
-        // Delete old file if any
-        if ($record->file_path) {
-            Storage::disk('public')->delete($record->file_path);
+        $user = $request->user();
+        if (!$user || (!$user->isAdmin() && !$user->isConsultant())) {
+            abort(403);
         }
 
-        $file = $request->file('file');
-        $path = $file->store('dh-files', 'public');
-
-        $record->update([
-            'file_path'     => $path,
-            'original_name' => $file->getClientOriginalName(),
+        $request->validate([
+            'files'   => ['required', 'array', 'min:1'],
+            'files.*' => ['file', 'max:25600', 'mimes:pdf,jpg,jpeg,png,webp'], // 25MB
         ]);
 
-        return back()->with('status', 'File uploaded.');
+        foreach ($request->file('files') as $file) {
+            $path = $file->store('dh-files', 'public');
+
+            DhRecordAttachment::create([
+                'record_id'     => $record->id,
+                'file_path'     => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime'          => $file->getClientMimeType(),
+                'size'          => $file->getSize(),
+            ]);
+        }
+
+        return back()->with('status', 'Files uploaded.');
     }
 
     // Download / view attachment
@@ -259,5 +274,102 @@ class DocumentHubController extends Controller
         $zip->close();
 
         return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
+
+    public function recordAttachments(DhRecord $record)
+    {
+        $record->load('attachments');
+
+        return response()->json([
+            'items' => $record->attachments->map(fn($a) => [
+                'id' => $a->id,
+                'name' => $a->original_name ?: 'Attachment',
+                'inline_url' => route('dh.attachments.download', [$a, 'inline' => 1]),
+                'download_url' => route('dh.attachments.download', $a),
+            ])->values()->all()
+        ]);
+    }
+
+    public function downloadAttachment(DhRecordAttachment $att, Request $request)
+    {
+        $fullPath = Storage::disk('public')->path($att->file_path);
+        if (!file_exists($fullPath)) abort(404);
+
+        $downloadName = $att->original_name ?: 'document.pdf';
+
+        if ($request->boolean('inline')) {
+            return response()->file($fullPath, [
+                'Content-Disposition' => 'inline; filename="' . $downloadName . '"',
+            ]);
+        }
+
+        return response()->download($fullPath, $downloadName);
+    }
+
+    public function downloadRecordAll(DhRecord $record)
+    {
+        $record->load('attachments');
+
+        if ($record->attachments->isEmpty()) {
+            return back()->with('status', 'No attachments to download.');
+        }
+
+        $zip = new \ZipArchive();
+
+        $safe = \Illuminate\Support\Str::slug($record->description ?: ('record-' . $record->id));
+        $zipName = $safe . '-' . now()->format('Ymd-His') . '.zip';
+
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $zipPath = $tempDir . '/' . $zipName;
+
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Could not create ZIP file.');
+        }
+
+        foreach ($record->attachments as $att) {
+            if (!$att->file_path) continue;
+
+            $fullPath = \Illuminate\Support\Facades\Storage::disk('public')->path($att->file_path);
+            if (!file_exists($fullPath)) continue;
+
+            $nameInZip = $att->original_name ?: basename($fullPath);
+
+            // avoid duplicates
+            $base = pathinfo($nameInZip, PATHINFO_FILENAME);
+            $ext  = pathinfo($nameInZip, PATHINFO_EXTENSION);
+            $n = 1;
+
+            while ($zip->locateName($nameInZip) !== false) {
+                $suffix = ' (' . $n++ . ')';
+                $nameInZip = $base . $suffix . ($ext ? '.' . $ext : '');
+            }
+
+            $zip->addFile($fullPath, $nameInZip);
+        }
+
+        $zip->close();
+
+        return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
+
+    public function deleteAttachment(Request $request, DhRecordAttachment $attachment)
+    {
+        $user = $request->user();
+
+        if (!$user || (!$user->isAdmin() && !$user->isConsultant())) {
+            abort(403);
+        }
+
+        if ($attachment->file_path) {
+            Storage::disk('public')->delete($attachment->file_path);
+        }
+
+        $attachment->delete();
+
+        return response()->json(['ok' => true]);
     }
 }

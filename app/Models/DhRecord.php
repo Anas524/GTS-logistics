@@ -24,4 +24,9 @@ class DhRecord extends Model
     {
         return $this->belongsTo(DhFolder::class, 'folder_id');
     }
+
+    public function attachments()
+    {
+        return $this->hasMany(DhRecordAttachment::class, 'record_id');
+    }
 }

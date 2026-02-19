@@ -24,7 +24,7 @@
                 </h1>
                 <p class="mt-1 text-xs text-slate-500 max-w-xl">
                     @if($isConsultant)
-                        You have read-only access to folders and attachments.
+                        You can view folders and upload files. Only admins can create/delete folders.
                     @else
                         Create folders and organise your admin documents and attachments so you can find them quickly.
                     @endif

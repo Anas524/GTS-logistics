@@ -23,9 +23,9 @@ Route::get('/login', function () {
 // Route::middleware(['auth'])->get('/admin-dashboard', fn() => view('admin.dashboard'))
 //     ->name('admin.dashboard');
 
-// Route::middleware(['auth', 'admin'])
-//     ->get('/admin-dashboard', DashboardController::class)
-//     ->name('admin.dashboard');
+Route::middleware(['auth', 'admin'])
+    ->get('/admin-dashboard', DashboardController::class)
+    ->name('investment.index');
 
 // Protected ARCalc routes
 Route::middleware(['auth', 'admin'])->group(function () {
@@ -105,16 +105,26 @@ Route::middleware(['auth', 'adminOrConsultant'])->prefix('admin')->group(functio
         ->middleware('admin');
 
     Route::post('/document-hub/{folder}/records', [DocumentHubController::class, 'storeRecord'])
-        ->name('dh.records.store')
-        ->middleware('admin');
+        ->name('dh.records.store');
 
     Route::post('/document-hub/records/{record}/upload', [DocumentHubController::class, 'uploadFile'])
-        ->name('dh.records.upload')
-        ->middleware('admin');
+        ->name('dh.records.upload');
 
     Route::delete('/document-hub/records/{record}', [DocumentHubController::class, 'destroyRecord'])
         ->name('dh.records.destroy')
         ->middleware('admin');
+
+    Route::get('/document-hub/attachments/{att}/download', [DocumentHubController::class, 'downloadAttachment'])
+        ->name('dh.attachments.download');
+
+    Route::get('/document-hub/records/{record}/attachments', [DocumentHubController::class, 'recordAttachments'])
+        ->name('dh.records.attachments');
+
+    Route::get('/document-hub/records/{record}/download-all', [DocumentHubController::class, 'downloadRecordAll'])
+        ->name('dh.records.downloadAll');
+
+    Route::delete('/document-hub/attachments/{attachment}', [DocumentHubController::class, 'deleteAttachment'])
+        ->name('dh.attachments.delete');
 });
 
 Route::get('/careers', function () {
