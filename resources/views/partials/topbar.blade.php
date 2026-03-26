@@ -28,43 +28,45 @@
 </div>
 
 @guest
-  {{-- Only show login tab when logged out --}}
-  <div class="header-tab full-login-tab modern-admin-login" id="loginTab">
-      <h3 class="login-heading"><i class="fas fa-right-to-bracket"></i> GTS Portal Login</h3>
-      <form method="POST" action="{{ url('/login') }}" id="adminLoginForm">
-          @csrf
-          <div class="modern-input-group">
-              <label for="email"><i data-lucide="mail" style="width:20px;height:20px;"></i></label>
-              <input type="email" name="email" id="email" placeholder="Email Address" required>
-          </div>
-          <div class="modern-input-group" style="position:relative;">
-              <label for="password"><i data-lucide="lock" style="width:20px;height:20px;"></i></label>
-              <input type="password" name="password" id="password" placeholder="Password" required>
-              <span id="togglePassword" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;">
-                  <i data-lucide="eye" id="eyeIcon" style="width:20px;height:20px;color:gray"></i>
-              </span>
-          </div>
-          <button type="submit" class="modern-login-btn" id="loginSubmitBtn">Login</button>
-          <span class="loader" id="loginLoader" style="display:none;"></span>
+{{-- Only show login tab when logged out --}}
+<div class="header-tab full-login-tab modern-admin-login" id="loginTab">
+    <h3 class="login-heading"><i class="fas fa-right-to-bracket"></i> GTS Portal Login</h3>
+    <form method="POST" action="{{ route('login') }}" id="adminLoginForm">
+        @csrf
+        <div class="modern-input-group">
+            <label for="email"><i data-lucide="mail" style="width:20px;height:20px;"></i></label>
+            <input type="email" name="email" id="email" placeholder="Email Address" required>
+        </div>
+        <div class="modern-input-group" style="position:relative;">
+            <label for="password"><i data-lucide="lock" style="width:20px;height:20px;"></i></label>
+            <input type="password" name="password" id="password" placeholder="Password" required>
+            <span id="togglePassword" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;">
+                <i data-lucide="eye" id="eyeIcon" style="width:20px;height:20px;color:gray"></i>
+            </span>
+        </div>
+        <button type="submit" class="modern-login-btn" id="loginSubmitBtn">Login</button>
+        <span class="loader" id="loginLoader" style="display:none;"></span>
 
-          @if ($errors->has('login_error'))
-          <div class="alert alert-danger">
-              {{ $errors->first('login_error') }}
-          </div>
-          @endif
-      </form>
-  </div>
+        @if ($errors->any())
+        <div class="alert alert-danger">
+            {{ $errors->first('email') ?? $errors->first() }}
+        </div>
+        @endif
+    </form>
+</div>
 @endguest
 
 <!-- Show Login Tab if `?login=1` -->
 @if(request()->has('login'))
 <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const $tab = $('#loginTab');
-    if ($tab.length) {
-      $tab.fadeIn(300);
-      $('html, body').animate({ scrollTop: $tab.offset().top - 50 }, 400);
-    }
-  });
+    document.addEventListener("DOMContentLoaded", function() {
+        const $tab = $('#loginTab');
+        if ($tab.length) {
+            $tab.fadeIn(300);
+            $('html, body').animate({
+                scrollTop: $tab.offset().top - 50
+            }, 400);
+        }
+    });
 </script>
 @endif

@@ -21,7 +21,7 @@
     <script src="https://cdn.jsdelivr.net/npm/slim-select@2.6.0/dist/slimselect.min.js"></script>
 </head>
 
-<body class="{{ request()->routeIs('amazon.services') ? 'amazon-only' : '' }}">
+<body class="{{ request()->routeIs('amazon.services') ? 'amazon-only' : '' }}" data-open-login="{{ session('openLogin') ? '1' : '0' }}">
 
     <!-- Entry Animation Overlay -->
     <div id="entryOverlay">
@@ -728,13 +728,13 @@
     </div>
 
     <div id="whatsapp-chat">
-        <a onclick="toggleChatPopup()">
+        <a href="javascript:void(0);" id="whatsappToggle">
             <img src="{{ asset('images/whatsapp-icon.png') }}" alt="WhatsApp Chat">
         </a>
         <div id="chat-popup">
             <div class="header">Hi, Welcome to GTS Logistics & Air Cargo Services! 👋</div>
             <p>Can you chat with our team?</p>
-            <button id="start-chat" onclick="startWhatsAppChat()">Start Chat</button>
+            <button id="start-chat" type="button">Start Chat</button>
         </div>
     </div>
 

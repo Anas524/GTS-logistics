@@ -1,20 +1,28 @@
+window.__OPEN_LOGIN__ = document.body.dataset.openLogin === '1';
+
 let tabTimeout;
 
 $(document).ready(function () {
-    let lastScrollTop = 0;
-    const scrollThreshold = 5; // Minimum scroll delta to trigger
-    const $topBar = $('.top-bar');
-    const $header = $('.main-header');
-    const $heroSlider = $('.hero-slider');
+    // Auto-open login tab only when explicitly requested
+    const shouldOpenLoginTab =
+        window.__OPEN_LOGIN__ === true ||
+        new URLSearchParams(window.location.search).has('login');
 
-    // Auto-open login tab when server says so
-    if (window.__OPEN_LOGIN__) {
+    if (shouldOpenLoginTab) {
         const $tab = $('#loginTab');
         if ($tab.length) {
             $tab.stop(true, true).fadeIn(250);
             $('html, body').animate({ scrollTop: $tab.offset().top - 100 }, 400);
         }
+    } else {
+        $('#loginTab').stop(true, true).hide();
     }
+
+    let lastScrollTop = 0;
+    const scrollThreshold = 5; // Minimum scroll delta to trigger
+    const $topBar = $('.top-bar');
+    const $header = $('.main-header');
+    const $heroSlider = $('.hero-slider');
 
     $(window).on('scroll', function () {
         let st = $(this).scrollTop();
@@ -28,106 +36,158 @@ $(document).ready(function () {
             if (!isMobile) $topBar.slideDown(200);
             $header.css('top', isMobile ? '0px' : '45px');
             $heroSlider.removeClass('fullscreen shifted');
-            $('.header-tab').css('top', isMobile ? '80px' : '95px');
+            $('.header-tab').not('#loginTab').css('top', isMobile ? '80px' : '95px');
         } else if (st > lastScrollTop) {
             // Scrolling down
             if (!isMobile) $topBar.slideUp(200);
             $header.css('top', '0px');
             $heroSlider.addClass('fullscreen shifted');
-            $('.header-tab').css('top', isMobile ? '60px' : '70px');
+            $('.header-tab').not('#loginTab').css('top', isMobile ? '60px' : '70px');
         } else {
             // Scrolling up
             if (!isMobile) $topBar.slideDown(200);
             $header.css('top', isMobile ? '0px' : '45px');
             $heroSlider.removeClass('fullscreen shifted');
-            $('.header-tab').css('top', isMobile ? '80px' : '95px');
+            $('.header-tab').not('#loginTab').css('top', isMobile ? '80px' : '95px');
         }
 
         lastScrollTop = st;
     });
 
     const $headerMenu = $('#inlineMenu');
+    const $toggle = $('#menuToggle');
 
-    $('#menuToggle').click(function () {
-        if ($headerMenu.hasClass('show')) {
-            $headerMenu.removeClass('show').css({ display: 'none' });
+    function isMobileView() {
+        return window.innerWidth <= 1024;
+    }
+
+    function openHeaderMenu() {
+        // hide header tabs before opening menu
+        $('.header-tab').stop(true, true).hide();
+
+        $headerMenu.stop(true, true);
+
+        if (isMobileView()) {
+            $headerMenu
+                .css('display', 'flex')
+                .hide()
+                .slideDown(200, function () {
+                    $headerMenu.addClass('show');
+                });
         } else {
-            $headerMenu.css({ display: 'flex' });
-            setTimeout(() => { $headerMenu.addClass('show'); }, 10);
+            $headerMenu.css('display', 'flex');
+            requestAnimationFrame(() => {
+                $headerMenu.addClass('show');
+            });
+        }
+    }
+
+    function closeHeaderMenu() {
+        $headerMenu.stop(true, true);
+
+        if (isMobileView()) {
+            $headerMenu.slideUp(200, function () {
+                $headerMenu.removeClass('show').css('display', 'none');
+            });
+        } else {
+            $headerMenu.removeClass('show').css('display', 'none');
+        }
+    }
+
+    function toggleHeaderMenu() {
+        if ($headerMenu.hasClass('show') || $headerMenu.is(':visible')) {
+            closeHeaderMenu();
+        } else {
+            openHeaderMenu();
+        }
+    }
+
+    $toggle.on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Never open login tab from 3-dot click
+        $('#loginTab').stop(true, true).hide();
+
+        toggleHeaderMenu();
+    });
+
+    $(document).on('click', function (e) {
+        if (
+            !$headerMenu.is(e.target) &&
+            $headerMenu.has(e.target).length === 0 &&
+            !$toggle.is(e.target) &&
+            $toggle.has(e.target).length === 0
+        ) {
+            closeHeaderMenu();
         }
     });
 
-    // Tablet/Mobile only behavior for header
-    if (window.innerWidth <= 1024) {
-        const $toggle = $('#menuToggle');
+    $(window).on('resize', function () {
+        closeHeaderMenu();
 
-        $toggle.on('click', function (e) {
-            e.stopPropagation();
-            if ($headerMenu.is(':visible')) {
-                $headerMenu.slideUp(200).removeClass('show');
-            } else {
-                $headerMenu.slideDown(200).addClass('show');
-            }
-        });
+        if (!isMobileView()) {
+            $('.header-tab').not('#loginTab').css('top', '95px');
+        }
+    });
 
-        // Close when clicking outside
-        $(document).on('click', function (e) {
-            if (
-                !$headerMenu.is(e.target) &&
-                $headerMenu.has(e.target).length === 0 &&
-                !$toggle.is(e.target) &&
-                $toggle.has(e.target).length === 0
-            ) {
-                $headerMenu.slideUp(200).removeClass('show');
-            }
-        });
+    // Mobile only: open About / Services / Login tabs on click
+    $(document).on('click', '#inlineMenu a.tab-trigger', function (e) {
+        if (!isMobileView()) return;
 
-        // Close on <a> click AND show header-tab
-        $headerMenu.find('a.tab-trigger').on('click', function (e) {
-            e.preventDefault(); // prevent default anchor jump
+        e.preventDefault();
+        e.stopPropagation();
 
-            const tabId = $(this).data('tab');
+        const tabId = $(this).data('tab');
+        $('.header-tab').stop(true, true).hide();
 
-            // Close the menu
-            $headerMenu.slideUp(200).removeClass('show');
+        closeHeaderMenu();
 
-            // Hide all header-tabs, then show the selected one
-            $('.header-tab').slideUp(0); // instantly hide all
-            if (tabId) {
-                $('#' + tabId).slideDown(300);
-            }
+        if (tabId && $('#' + tabId).length) {
+            $('#' + tabId).stop(true, true).slideDown(250);
 
-            // Optional: Scroll smoothly to header-tab (for mobile view)
-            const $target = $('#' + tabId);
-            if ($target.length) {
-                $('html, body').animate({
-                    scrollTop: $target.offset().top - 120 // adjust offset as needed
-                }, 600);
-            }
-        });
-    }
+            $('html, body').animate({
+                scrollTop: $('#' + tabId).offset().top - 90
+            }, 400);
+        }
+    });
 
     // Header Tab open on hover (generic, non-login)
-    $('.tab-trigger').hover(function () {
-        clearTimeout(tabTimeout);
+    // Header tab hover only for desktop
+    if (window.innerWidth > 1024) {
+        $('.tab-trigger').hover(function () {
+            clearTimeout(tabTimeout);
 
-        const tabId = $(this).data('tab');
-        // hide others, show the one paired with this trigger
-        $('.header-tab').not('#' + tabId).stop(true, true).slideUp(100);
-        $('#' + tabId).stop(true, true).slideDown(200);
+            const tabId = $(this).data('tab');
+            $('.header-tab').not('#' + tabId).stop(true, true).slideUp(100);
+            $('#' + tabId).stop(true, true).slideDown(200);
 
-    }, function () {
-        const tabId = $(this).data('tab');
-        const $paired = $('#' + tabId);
+        }, function () {
+            const tabId = $(this).data('tab');
+            const $paired = $('#' + tabId);
 
-        // schedule close only for its own paired tab (and never for loginTab)
-        tabTimeout = setTimeout(() => {
-            if (tabId === 'loginTab') return;                            // leave login to its own logic
-            if (!$paired.is(':hover') && !containsFocus($paired)) {
-                $paired.slideUp(200);
-            }
-        }, 500);
-    });
+            tabTimeout = setTimeout(() => {
+                if (tabId === 'loginTab') return;
+                if (!$paired.is(':hover') && !containsFocus($paired)) {
+                    $paired.slideUp(200);
+                }
+            }, 500);
+        });
+
+        $('.header-tab').hover(function () {
+            clearTimeout(tabTimeout);
+        }, function () {
+            const $self = $(this);
+
+            if ($self.attr('id') === 'loginTab') return;
+
+            tabTimeout = setTimeout(() => {
+                if (!$self.is(':hover') && !containsFocus($self)) {
+                    $self.slideUp(200);
+                }
+            }, 500);
+        });
+    }
 
     // helper used in multiple places
     function containsFocus($el) {
@@ -201,92 +261,121 @@ $(document).ready(function () {
     animateCardsOnScroll();
     $(window).on('scroll', animateCardsOnScroll);
 
-    // --- Login tab: open logic and safe-close logic ---
+    // --- Login tab: desktop hover, mobile click, no touchstart close ---
     (function () {
         const $loginTab = $('#loginTab');
         const $loginTrig = $('[data-tab="loginTab"]');
         let closeTimer = null;
 
-        // Open on hover or click of the trigger
-        $loginTrig.on('mouseenter click', function (e) {
-            e.preventDefault();
+        function isMobile() {
+            return window.innerWidth <= 1024;
+        }
+
+        function openLoginTab() {
             clearTimeout(closeTimer);
             $loginTab.stop(true, true).fadeIn(200);
-        });
+        }
 
-        // Keep it open while hovered OR focused
-        $loginTab.on('mouseenter focusin', function () {
+        function closeLoginTab() {
             clearTimeout(closeTimer);
-            $(this).stop(true, true).show(); // ensure visible while interacting
-        });
-
-        // When mouse leaves, schedule a close — but only if nothing inside has focus
-        $loginTab.on('mouseleave', function () {
-            scheduleClose();
-        });
-
-        // When focus leaves an input/button, re-check if we should close
-        $loginTab.on('focusout', function () {
-            // Defer to let focus move to another control inside, if any
-            setTimeout(() => {
-                if (!isHovering($loginTab) && !containsFocus($loginTab)) {
-                    scheduleClose();
-                }
-            }, 0);
-        });
-
-        // Close on real outside clicks/taps only
-        $(document).on('mousedown touchstart', function (e) {
-            const $t = $(e.target);
-            if ($t.closest('#loginTab, [data-tab="loginTab"]').length === 0) {
-                clearTimeout(closeTimer);
-                $loginTab.fadeOut(150);
-            }
-        });
-
-        // Optional: close on ESC
-        $(document).on('keydown', function (e) {
-            if (e.key === 'Escape') {
-                clearTimeout(closeTimer);
-                $loginTab.fadeOut(150);
-            }
-        });
+            $loginTab.stop(true, true).fadeOut(150);
+        }
 
         function scheduleClose() {
             clearTimeout(closeTimer);
             closeTimer = setTimeout(() => {
-                // Only close if not hovered and nothing inside has focus
-                if (!isHovering($loginTab) && !containsFocus($loginTab)) {
-                    $loginTab.fadeOut(150);
+                if (!isMobile() && !isHovering($loginTab) && !containsFocus($loginTab)) {
+                    closeLoginTab();
                 }
-            }, 400); // small grace period feels nicer
+            }, 400);
         }
 
         function isHovering($el) {
             return $el.is(':hover');
         }
+
         function containsFocus($el) {
             const active = document.activeElement;
             return active && $el.get(0).contains(active);
         }
+
+        // Mobile: click only
+        $loginTrig.on('click', function (e) {
+            e.preventDefault();
+            openLoginTab();
+        });
+
+        // Desktop: hover support only
+        $loginTrig.on('mouseenter', function (e) {
+            if (isMobile()) return;
+            e.preventDefault();
+            openLoginTab();
+        });
+
+        $loginTab.on('mouseenter focusin', function () {
+            clearTimeout(closeTimer);
+            $(this).stop(true, true).show();
+        });
+
+        $loginTab.on('mouseleave', function () {
+            if (!isMobile()) scheduleClose();
+        });
+
+        $loginTab.on('focusout', function () {
+            setTimeout(() => {
+                if (!isMobile() && !isHovering($loginTab) && !containsFocus($loginTab)) {
+                    scheduleClose();
+                }
+            }, 0);
+        });
+
+        // Close only on click, not touchstart/mousedown
+        $(document).on('click', function (e) {
+            const $t = $(e.target);
+            if ($t.closest('#loginTab, [data-tab="loginTab"]').length === 0) {
+                closeLoginTab();
+            }
+        });
+
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeLoginTab();
+            }
+        });
     })();
 
     $('#adminLoginForm').on('submit', function () {
-        $('#loginSubmitBtn').hide();
-        $('#loginLoader').show();
+        const $btn = $('#loginSubmitBtn');
+        const $loader = $('#loginLoader');
+
+        $btn.prop('disabled', true).hide();
+        $loader.show();
+
+        // only fallback UI restore if page stays on same screen
+        setTimeout(() => {
+            if (document.visibilityState === 'visible') {
+                $loader.hide();
+                $btn.prop('disabled', false).show();
+            }
+        }, 5000);
     });
 
     //Whatsapp-chat
-    $("#whatsapp-chat").on("click", function () {
-        $("#chat-popup").fadeIn();
+    $('#whatsappToggle').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('#chat-popup').fadeToggle(150);
     });
 
-    $("#start-chat").on("click", function () {
-        let phoneNumber = "971523194073";
-        let message = encodeURIComponent("Hi, I’d like to get in touch with GTS Logistics & Air Cargo Services. Is someone available to chat?");
-        let whatsappURL = `https://wa.me/${phoneNumber}?text=${message}`;
+    $('#start-chat').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
 
-        window.open(whatsappURL, "_blank");
+        const phoneNumber = "971523194073";
+        const message = encodeURIComponent("Hi, I’d like to get in touch with GTS Logistics & Air Cargo Services. Is someone available to chat?");
+        const whatsappURL = `https://wa.me/${phoneNumber}?text=${message}`;
+
+        window.location.href = whatsappURL;
     });
 
     // Hide chat popup when clicked outside
@@ -465,16 +554,16 @@ $(document).ready(function () {
 
     // Auto scroll for after submit newsletter and contact
     const $newsletterSection = $('#newsletter-section');
-    const $newsletterMsg  = $newsletterSection.find('.contact-success');
+    const $newsletterMsg = $newsletterSection.find('.contact-success');
 
-    if ($newsletterMsg .length) {
+    if ($newsletterMsg.length) {
         $('html, body').animate({
             scrollTop: $newsletterSection.offset().top - 80
         }, 600);
     }
 
     const $contactSection = $('#contact-section');
-    const $contactMsg  = $contactSection.find('.contact-success');
+    const $contactMsg = $contactSection.find('.contact-success');
     const $hasErrors = $contactSection.find('small.e').length > 0;
 
     if ($contactMsg.length || $hasErrors) {
@@ -535,8 +624,8 @@ function applyOrder() {
 }
 
 function openResetModal() {
-    const $modal = $('#resetPassModal');               
-    const $dashMenu = $('.dash-settings-popover');  
+    const $modal = $('#resetPassModal');
+    const $dashMenu = $('.dash-settings-popover');
     $modal.addClass('show').attr('aria-hidden', 'false');
     $('body').addClass('modal-open');
     // let the dialog paint before focusing the field
@@ -546,7 +635,7 @@ function openResetModal() {
 }
 
 function closeResetModal() {
-    const $modal = $('#resetPassModal'); 
+    const $modal = $('#resetPassModal');
     $modal.removeClass('show').attr('aria-hidden', 'true');
     $('body').removeClass('modal-open');
 }
@@ -568,7 +657,7 @@ function closeResetModal() {
         const y = window.scrollY;
 
         const scrollingDown = y > lastScrollY;
-        const scrollingUp   = y < lastScrollY;
+        const scrollingUp = y < lastScrollY;
 
         // Show when user scrolls down past threshold
         if (scrollingDown && y > showAt) {
