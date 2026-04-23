@@ -29,4 +29,10 @@ class DhRecord extends Model
     {
         return $this->hasMany(DhRecordAttachment::class, 'record_id');
     }
+
+    public function activeAttachments()
+    {
+        return $this->hasMany(DhRecordAttachment::class, 'record_id')
+            ->where('is_trashed', false);
+    }
 }
