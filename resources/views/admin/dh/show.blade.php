@@ -64,6 +64,26 @@
     #dh-viewer-side-list .dh-open:focus {
         outline: none !important;
     }
+
+    .dh-drop-active {
+        position: relative;
+    }
+
+    .dh-drop-active::after {
+        content: "Drop files to upload";
+        position: absolute;
+        inset: 0;
+        background: rgba(14, 165, 233, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 600;
+        color: #0284c7;
+    }
+    .dh-zoom-img {
+        will-change: transform;
+    }
 </style>
 @endpush
 
@@ -671,7 +691,7 @@
             </aside>
 
             {{-- Main canvas --}}
-            <div class="space-y-4">
+            <div id="dh-main-drop-area" class="space-y-4">
                 <div class="dh-glass rounded-3xl px-4 py-4 md:px-6 md:py-5">
                     <div class="flex flex-wrap items-center justify-between gap-4">
                         <div>

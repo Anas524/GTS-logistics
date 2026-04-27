@@ -384,9 +384,9 @@
                                     <h3 class="dh-folder-line text-sm font-semibold text-slate-900">
                                         {{ $folder->folder_name }}
                                     </h3>
-                                    <p class="mt-1 text-[11px] text-slate-500">
+                                    <!-- <p class="mt-1 text-[11px] text-slate-500">
                                         Folder ID: {{ $folder->id }}
-                                    </p>
+                                    </p> -->
                                 </div>
                             </div>
 
@@ -538,7 +538,7 @@
                                         </div>
                                         <div class="min-w-0">
                                             <p class="font-semibold text-slate-900 break-words">{{ $folder->folder_name }}</p>
-                                            <p class="text-[11px] text-slate-500">Folder ID: {{ $folder->id }}</p>
+                                            <!-- <p class="text-[11px] text-slate-500">Folder ID: {{ $folder->id }}</p> -->
 
                                             @if(!empty($folder->remarks))
                                             <p class="mt-2 text-[11px] text-slate-500 break-words">

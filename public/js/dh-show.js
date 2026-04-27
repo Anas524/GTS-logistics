@@ -69,6 +69,7 @@ $(function () {
         $viewerTitle.text('File Preview');
         $viewerContent.empty();
         $downloadOne.attr('href', '#');
+        $(document).off('.dhZoom');
     }
 
     function openSingleFileViewer($ctx) {
@@ -84,8 +85,10 @@ $(function () {
 
         if (mime.startsWith('image/')) {
             html = `
-            <div class="flex h-full w-full items-center justify-center bg-slate-100 p-4">
-                <img src="${inlineUrl}" alt="${title}" class="max-h-full max-w-full object-contain rounded-xl">
+            <div class="dh-image-viewer flex h-full w-full items-center justify-center bg-slate-100 p-4 overflow-hidden">
+                <img src="${inlineUrl}" 
+                    alt="${title}" 
+                    class="dh-zoom-img max-h-full max-w-full object-contain rounded-xl cursor-zoom-in transition-transform duration-200">
             </div>
         `;
         } else if (mime.startsWith('video/')) {
@@ -109,6 +112,65 @@ $(function () {
         }
 
         $viewerContent.html(html);
+
+        setTimeout(() => {
+            const $img = $viewerContent.find('.dh-zoom-img');
+            if (!$img.length) return;
+
+            let scale = 1;
+            let isDragging = false;
+            let startX, startY, translateX = 0, translateY = 0;
+
+            // Click zoom
+            $img.on('click', function () {
+                scale = scale === 1 ? 2 : 1;
+                $(this).css({
+                    transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`,
+                    cursor: scale > 1 ? 'grab' : 'zoom-in'
+                });
+            });
+
+            // Mouse wheel zoom
+            $img.on('wheel', function (e) {
+                e.preventDefault();
+
+                scale += e.originalEvent.deltaY * -0.001;
+                scale = Math.min(Math.max(1, scale), 5);
+
+                $(this).css({
+                    transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`
+                });
+            });
+
+            // Drag to move
+            $img.on('mousedown', function (e) {
+                if (scale <= 1) return;
+
+                isDragging = true;
+                startX = e.pageX - translateX;
+                startY = e.pageY - translateY;
+
+                $(this).css('cursor', 'grabbing');
+            });
+
+            $(document).on('mousemove.dhZoom', function (e) {
+                if (!isDragging) return;
+
+                translateX = e.pageX - startX;
+                translateY = e.pageY - startY;
+
+                $img.css({
+                    transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)`
+                });
+            });
+
+            $(document).on('mouseup.dhZoom', function () {
+                isDragging = false;
+                if (scale > 1) $img.css('cursor', 'grab');
+            });
+
+        }, 50);
+
         $viewerModal.removeClass('hidden').addClass('flex');
     }
 
@@ -499,6 +561,120 @@ $(function () {
                 .attr('aria-hidden', 'true');
         }
 
+        function uploadFilesDirect(files) {
+
+            const action = $folderUploadForm.attr('action');
+            const token = $folderUploadForm.find('input[name="_token"]').val();
+
+            const docDate = new Date().toISOString().slice(0, 10);
+            const description = '';
+
+            let formData = new FormData();
+            formData.append('_token', token);
+            formData.append('doc_date', docDate);
+            formData.append('description', description);
+
+            const allowed = [
+                'application/pdf',
+                'image/',
+                'video/',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            ];
+
+            const allowedExtensions = ['.xls', '.xlsx', '.xlsm', '.csv'];
+            const MAX = 25 * 1024 * 1024;
+
+            const invalidSizeFiles = [];
+            const invalidTypeFiles = [];
+
+            const validFiles = files.filter(f => {
+
+                if (!f.name) return false;
+
+                const isExtensionValid = allowedExtensions.some(ext =>
+                    f.name.toLowerCase().endsWith(ext)
+                );
+
+                const isTypeValid =
+                    (f.type && allowed.some(type => f.type.startsWith(type))) || isExtensionValid;
+
+                if (!isTypeValid) {
+                    invalidTypeFiles.push(f.name);
+                    return false;
+                }
+
+                if (f.size > MAX) {
+                    invalidSizeFiles.push(f.name);
+                    return false;
+                }
+
+                return true;
+            });
+
+            // Combined alert (clean UX)
+            let messages = [];
+
+            if (invalidSizeFiles.length) {
+                messages.push('These files exceed 25MB:\n' + invalidSizeFiles.join('\n'));
+            }
+
+            if (invalidTypeFiles.length) {
+                messages.push('Unsupported file types:\n' + invalidTypeFiles.join('\n'));
+            }
+
+            if (messages.length) {
+                alert(messages.join('\n\n'));
+            }
+
+            if (!validFiles.length) {
+                alert('No valid files to upload.');
+                return;
+            }
+
+            validFiles.forEach(f => formData.append('files[]', f));
+
+            // Loader
+            showFolderQueue(
+                'Uploading ' + validFiles.length + ' file' + (validFiles.length === 1 ? '' : 's')
+            );
+
+            $.ajax({
+                url: action,
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                xhr: function () {
+                    const xhr = new XMLHttpRequest();
+
+                    xhr.upload.addEventListener('progress', function (evt) {
+                        if (evt.lengthComputable) {
+                            const percent = Math.round((evt.loaded / evt.total) * 100);
+                            $folderQueueBar.css('width', percent + '%');
+                            $folderQueueSub.text('Uploading... ' + percent + '%');
+                        }
+                    });
+
+                    return xhr;
+                },
+                success: function () {
+                    $folderQueueBar.css('width', '100%');
+                    $folderQueueSub.text('Upload complete');
+
+                    setTimeout(() => {
+                        closeFolderQueue();
+                        window.location.reload();
+                    }, 400);
+                },
+                error: function (xhr) {
+                    console.error(xhr);
+                    $folderQueueSub.text('Upload failed');
+                    alert('Upload failed. Try again.');
+                }
+            });
+        }
+
         $(document).on('click', '[data-dh-upload]', function (e) {
             e.preventDefault();
 
@@ -547,10 +723,6 @@ $(function () {
             renderSelectedFiles(files);
         });
 
-        $(document).on('dragover drop', function (e) {
-            e.preventDefault();
-        });
-
         if ($dropzone.length) {
             $dropzone.on('dragenter dragover', function (e) {
                 e.preventDefault();
@@ -575,6 +747,52 @@ $(function () {
                 droppedFiles = Array.from(dt.files || []);
                 $uploadFile.val('');
                 renderSelectedFiles(droppedFiles);
+            });
+        }
+
+        // ==============================
+        // GLOBAL DROP (FINAL STABLE)
+        // ==============================
+        var $mainDropArea = $('#dh-main-drop-area');
+
+        if ($mainDropArea.length) {
+
+            let dragCounter = 0;
+
+            $mainDropArea.on('dragenter', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                dragCounter++;
+
+                $(this).addClass('dh-drop-active ring-2 ring-sky-400 bg-sky-50');
+            });
+
+            $mainDropArea.on('dragleave', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                dragCounter--;
+
+                if (dragCounter <= 0) {
+                    dragCounter = 0;
+
+                    $(this).removeClass('dh-drop-active ring-2 ring-sky-400 bg-sky-50');
+                }
+            });
+
+            $mainDropArea.on('drop', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                dragCounter = 0;
+
+                $(this).removeClass('dh-drop-active ring-2 ring-sky-400 bg-sky-50');
+
+                const files = Array.from(e.originalEvent.dataTransfer.files || []);
+                if (!files.length) return;
+
+                uploadFilesDirect(files);
             });
         }
 
